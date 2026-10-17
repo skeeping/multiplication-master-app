@@ -1388,6 +1388,15 @@
             });
         }
 
+        // Native app hooks (Capacitor): Android back button, and pausing when the app goes to the background
+        const CapacitorApp = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App;
+        if (CapacitorApp) {
+            CapacitorApp.addListener('backButton', () => {
+                if (!handleBack()) CapacitorApp.exitApp();
+            });
+            CapacitorApp.addListener('pause', pauseSession);
+        }
+
         // Initialize UI on window load
         window.onload = function() {
             updateRecordsUI();
