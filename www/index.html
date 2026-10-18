@@ -487,6 +487,60 @@
                 </div>
                 <p class="text-[11px] text-slate-500" data-i18n="ageNote">Ages 5–7 start with + and − and never see speed numbers (speed is still used to pick questions). You can change the age group later.</p>
             </form>
+
+            <button onclick="switchTab('transfer')" class="w-full py-3 rounded-xl glass-card text-slate-300 hover:text-white font-semibold text-sm flex items-center justify-center gap-2">
+                <i class="fa-solid fa-right-left text-indigo-400"></i>
+                <span data-i18n="transferBtn">Move to another device</span>
+            </button>
+        </div>
+
+        <!-- VIEW 6: MOVE A PLAYER TO ANOTHER DEVICE (progress code export / import) -->
+        <div id="transferView" class="hidden glass-panel rounded-3xl p-6 sm:p-10 shadow-2xl space-y-6">
+            <div class="flex justify-between items-center border-b border-slate-700/50 pb-4">
+                <div>
+                    <h2 class="text-2xl font-bold text-white" data-i18n="transferTitle">Move to another device</h2>
+                    <p class="text-xs text-slate-400" data-i18n="transferSub">Copy a player's progress to a new phone or tablet.</p>
+                </div>
+                <button onclick="switchTab('players')" class="text-xs text-indigo-400 hover:text-indigo-300 font-semibold flex items-center space-x-1 shrink-0 pl-2">
+                    <i class="fa-solid fa-arrow-left"></i>
+                    <span data-i18n="back">Back</span>
+                </button>
+            </div>
+
+            <!-- Export -->
+            <div class="p-4 rounded-2xl glass-card space-y-3">
+                <h3 class="text-sm font-semibold text-white flex items-center gap-2">
+                    <i class="fa-solid fa-arrow-up-from-bracket text-indigo-400"></i>
+                    <span data-i18n="exportTitle">Send from this device</span>
+                </h3>
+                <p id="exportText" class="text-xs text-slate-400"></p>
+                <textarea id="exportCode" readonly rows="3" onfocus="this.select()"
+                    class="w-full p-3 rounded-xl bg-slate-900/80 border border-slate-700 text-[11px] font-mono-num text-slate-400 break-all resize-none focus:outline-none focus:border-indigo-400"></textarea>
+                <div class="flex gap-2">
+                    <button id="shareCodeBtn" onclick="shareTransferCode()" class="flex-1 py-3 rounded-xl btn-gradient text-white font-bold text-sm">
+                        <i class="fa-solid fa-share-nodes mr-1"></i> <span data-i18n="shareCode">Share code</span>
+                    </button>
+                    <button onclick="copyTransferCode()" class="flex-1 py-3 rounded-xl glass-card text-slate-300 hover:text-white font-semibold text-sm">
+                        <i class="fa-regular fa-copy mr-1"></i> <span data-i18n="copyCode">Copy code</span>
+                    </button>
+                </div>
+                <p id="exportStatus" class="text-xs text-emerald-300 min-h-[1rem] text-center"></p>
+                <p class="text-[11px] text-slate-500" data-i18n="exportOther">To send another player, pick them on the players screen first.</p>
+            </div>
+
+            <!-- Import -->
+            <div class="p-4 rounded-2xl glass-card space-y-3">
+                <h3 class="text-sm font-semibold text-white flex items-center gap-2">
+                    <i class="fa-solid fa-download text-indigo-400"></i>
+                    <span data-i18n="importTitle">Receive on this device</span>
+                </h3>
+                <textarea id="importCode" rows="3" placeholder="Paste the code here" data-i18n-placeholder="importPlaceholder" autocomplete="off" spellcheck="false"
+                    class="w-full p-3 rounded-xl bg-slate-900/80 border-2 border-indigo-500/40 text-[11px] font-mono-num text-white placeholder-slate-500 break-all resize-none focus:outline-none focus:border-indigo-400"></textarea>
+                <button onclick="importFromCode()" class="w-full py-3 rounded-xl btn-gradient text-white font-bold text-sm">
+                    <i class="fa-solid fa-user-plus mr-1"></i> <span data-i18n="importBtn">Import player</span>
+                </button>
+                <p id="importStatus" class="text-xs text-rose-300 min-h-[1rem] text-center"></p>
+            </div>
         </div>
 
     </main>
@@ -626,11 +680,12 @@
             lang = resolveLanguage(setting);
             applyStaticTexts();
             // Redraw whichever screen is showing (the picker is hidden during a quiz)
-            const visible = ['setup', 'results', 'analytics', 'players']
+            const visible = ['setup', 'results', 'analytics', 'players', 'transfer']
                 .find(view => !document.getElementById(`${view}View`).classList.contains('hidden'));
             if (visible === 'results') renderResults();
             else if (visible === 'analytics') switchTab('analytics');
             else if (visible === 'players') renderPlayerList();
+            else if (visible === 'transfer') renderTransfer();
             else updateRecordsUI();
         }
 
@@ -792,6 +847,7 @@
             document.getElementById('resultsView').classList.add('hidden');
             document.getElementById('analyticsView').classList.add('hidden');
             document.getElementById('playersView').classList.add('hidden');
+            document.getElementById('transferView').classList.add('hidden');
 
             // Keep the quiz screen compact: no footer, and no jumping to Analytics while the clock runs
             document.getElementById('footer').classList.toggle('hidden', tabName === 'quiz');
@@ -814,6 +870,9 @@
             } else if (tabName === 'players') {
                 renderPlayerList();
                 document.getElementById('playersView').classList.remove('hidden');
+            } else if (tabName === 'transfer') {
+                renderTransfer();
+                document.getElementById('transferView').classList.remove('hidden');
             }
             window.scrollTo(0, 0);
         }
@@ -1050,7 +1109,8 @@
             document.getElementById('modalIcon').innerHTML = `<i class="fa-solid ${icon}"></i>`;
             document.getElementById('modalTitle').textContent = title;
             document.getElementById('modalText').textContent = text;
-            document.getElementById('modalCancel').textContent = cancelLabel;
+            document.getElementById('modalCancel').textContent = cancelLabel || '';
+            document.getElementById('modalCancel').classList.toggle('hidden', !cancelLabel);
             const confirmBtn = document.getElementById('modalConfirm');
             confirmBtn.textContent = confirmLabel;
             confirmBtn.className = `flex-1 py-3 rounded-xl text-white font-bold text-sm ${confirmClass}`;
@@ -1121,6 +1181,10 @@
             }
             if (!document.getElementById('setupView').classList.contains('hidden')) {
                 return false; // on the home screen: let the app close
+            }
+            if (!document.getElementById('transferView').classList.contains('hidden')) {
+                switchTab('players');
+                return true;
             }
             switchTab('setup');
             return true;
@@ -1702,6 +1766,230 @@
                     renderActivePlayer();
                     renderPlayerList();
                 }
+            });
+        }
+
+        /* ==========================================================================
+           MOVE A PLAYER TO ANOTHER DEVICE
+           A player's settings, scores and stats are packed into a "progress code":
+           "MM1z:" + base64url(deflate(JSON)), or "MM1j:" + base64url(JSON) where the
+           browser can't compress. The code can be pasted on its own or inside the shared message.
+           ========================================================================== */
+        const TRANSFER_CODE_PATTERN = /MM1([zj]):([A-Za-z0-9_-]+)/;
+        const MAX_TRANSFER_CODE_LENGTH = 200000;
+        let transferCode = '';
+
+        function toBase64Url(bytes) {
+            let binary = '';
+            for (let i = 0; i < bytes.length; i += 0x8000) {
+                binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+            }
+            return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+        }
+
+        function fromBase64Url(text) {
+            const binary = atob(text.replace(/-/g, '+').replace(/_/g, '/'));
+            return Uint8Array.from(binary, ch => ch.charCodeAt(0));
+        }
+
+        async function pipeBytes(bytes, transform) {
+            return new Uint8Array(await new Response(new Blob([bytes]).stream().pipeThrough(transform)).arrayBuffer());
+        }
+
+        // Compact snapshot of the active player: stats become short arrays to keep the code small
+        function buildTransferData() {
+            const player = getActivePlayer();
+            const round = n => Math.round((Number(n) || 0) * 1000) / 1000;
+            const facts = {};
+            Object.entries(factStats).forEach(([key, f]) => {
+                facts[key] = [f.attempts, f.correct, round(f.speed), f.streak];
+            });
+            const tables = {};
+            Object.entries(tableStats).forEach(([table, st]) => {
+                if (st.count > 0 || st.mistakes > 0) tables[table] = [round(st.totalTime), st.count, st.mistakes];
+            });
+            return {
+                app: 'mm', v: 1,
+                player: { name: player.name, color: player.color, ageGroup: player.ageGroup, ops: player.ops },
+                scores: highScores, tables, facts
+            };
+        }
+
+        async function encodeTransferCode(data) {
+            let bytes = new TextEncoder().encode(JSON.stringify(data));
+            if (window.CompressionStream) {
+                return `MM1z:${toBase64Url(await pipeBytes(bytes, new CompressionStream('deflate')))}`;
+            }
+            return `MM1j:${toBase64Url(bytes)}`;
+        }
+
+        // Returns clean data, or throws if the code is damaged or not a progress code.
+        // Everything is checked, since the code comes from outside the app.
+        async function decodeTransferCode(text) {
+            const match = String(text).replace(/\s+/g, '').match(TRANSFER_CODE_PATTERN);
+            if (!match || match[2].length > MAX_TRANSFER_CODE_LENGTH) throw new Error('invalid');
+            let bytes = fromBase64Url(match[2]);
+            if (match[1] === 'z') {
+                if (!window.DecompressionStream) throw new Error('unsupported');
+                bytes = await pipeBytes(bytes, new DecompressionStream('deflate'));
+            }
+            const raw = JSON.parse(new TextDecoder().decode(bytes));
+            if (!raw || raw.app !== 'mm' || raw.v !== 1 || !raw.player) throw new Error('invalid');
+
+            const count = n => (Number.isFinite(n) && n >= 0 ? n : null);
+            const entries = obj => (obj && typeof obj === 'object' && !Array.isArray(obj) ? Object.entries(obj) : []);
+
+            const ops = (Array.isArray(raw.player.ops) ? raw.player.ops : []).filter(op => OP_ORDER.includes(op));
+            const player = {
+                name: String(raw.player.name || '').trim().slice(0, 20) || t('defaultPlayer'),
+                color: Number.isInteger(raw.player.color) && raw.player.color >= 0 ? raw.player.color : 0,
+                ageGroup: raw.player.ageGroup === 'young' ? 'young' : 'older',
+                ops: OP_ORDER.filter(op => ops.includes(op))
+            };
+            if (player.ops.length === 0) player.ops = ['mul'];
+
+            const scores = {};
+            entries(raw.scores).forEach(([key, value]) => {
+                if (/^(5|10|15|20)(:[a-z+]+)?$/.test(key) && count(value) !== null) scores[key] = value;
+            });
+            const tables = {};
+            entries(raw.tables).forEach(([table, st]) => {
+                if (/^([2-9]|1[0-2])$/.test(table) && Array.isArray(st) && st.every(n => count(n) !== null)) {
+                    tables[table] = { totalTime: st[0], count: st[1], mistakes: st[2] };
+                }
+            });
+            const facts = {};
+            entries(raw.facts).forEach(([key, f]) => {
+                if (/^\d{1,3}[+\-x\/]\d{1,3}$/.test(key) && Array.isArray(f) && f.length === 4 && f.every(n => count(n) !== null)) {
+                    facts[key] = { attempts: f[0], correct: f[1], speed: f[0] > 0 ? f[2] : null, streak: f[3] };
+                }
+            });
+            return { player, scores, tables, facts };
+        }
+
+        async function renderTransfer() {
+            const player = getActivePlayer();
+            document.getElementById('exportText').textContent = t('exportText', { name: player.name });
+            document.getElementById('exportStatus').textContent = '';
+            document.getElementById('importStatus').textContent = '';
+            document.getElementById('shareCodeBtn').classList.toggle('hidden', !canShareText());
+            transferCode = await encodeTransferCode(buildTransferData());
+            document.getElementById('exportCode').value = transferCode;
+        }
+
+        function nativeShare() {
+            return window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Share;
+        }
+
+        function canShareText() {
+            return Boolean(nativeShare() || (window.AndroidBridge && window.AndroidBridge.shareText) || navigator.share);
+        }
+
+        // Share sheet (WhatsApp, email, ...) where available, otherwise copy
+        async function shareTransferCode() {
+            const text = `${t('shareMessage', { name: getActivePlayer().name })}\n\n${transferCode}`;
+            try {
+                if (nativeShare()) await nativeShare().share({ title: 'Multiplication Master', text });
+                else if (window.AndroidBridge && window.AndroidBridge.shareText) window.AndroidBridge.shareText(text);
+                else if (navigator.share) await navigator.share({ title: 'Multiplication Master', text });
+                else await copyTransferCode();
+            } catch (e) {
+                const cancelled = e && (e.name === 'AbortError' || /cancel/i.test(e.message || ''));
+                if (!cancelled) await copyTransferCode();
+            }
+        }
+
+        async function copyTransferCode() {
+            const box = document.getElementById('exportCode');
+            const status = document.getElementById('exportStatus');
+            let copied = false;
+            try {
+                await navigator.clipboard.writeText(transferCode);
+                copied = true;
+            } catch (e) {
+                // Older WebViews: copy the selected text instead
+                box.focus();
+                box.select();
+                try { copied = document.execCommand('copy'); } catch (e2) { copied = false; }
+            }
+            status.className = `text-xs min-h-[1rem] text-center ${copied ? 'text-emerald-300' : 'text-amber-300'}`;
+            status.textContent = t(copied ? 'copied' : 'copyFailed');
+        }
+
+        async function importFromCode() {
+            const status = document.getElementById('importStatus');
+            status.textContent = '';
+            let data;
+            try {
+                data = await decodeTransferCode(document.getElementById('importCode').value);
+            } catch (e) {
+                status.textContent = t(e.message === 'unsupported' ? 'importUnsupported' : 'importInvalid');
+                return;
+            }
+
+            // A brand-new device only has the untouched starting player: just replace it
+            const only = playersData.players.length === 1 ? playersData.players[0] : null;
+            if (only && isUntouched(only)) {
+                finishImport(saveImportedPlayer(data, only));
+                return;
+            }
+            const sameName = playersData.players.find(p => p.name.toLowerCase() === data.player.name.toLowerCase());
+            if (!sameName) {
+                finishImport(saveImportedPlayer(data, null));
+                return;
+            }
+            showModal({
+                icon: 'fa-user-group',
+                iconClass: 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30',
+                title: t('importExistsTitle', { name: sameName.name }),
+                text: t('importExistsText', { name: sameName.name }),
+                confirmLabel: t('replace'),
+                confirmClass: 'btn-gradient',
+                cancelLabel: t('keepBoth'),
+                onConfirm: () => finishImport(saveImportedPlayer(data, sameName)),
+                onCancel: () => finishImport(saveImportedPlayer(data, null)),
+                onDismiss: () => {}
+            });
+        }
+
+        function isUntouched(player) {
+            const facts = loadJSON(playerKey(STORAGE_KEY_FACTS, player.id), {});
+            const scores = loadJSON(playerKey(STORAGE_KEY_SCORES, player.id), {});
+            const tables = loadJSON(playerKey(STORAGE_KEY_STATS, player.id), {});
+            return Object.keys(facts).length === 0
+                && Object.values(scores).every(n => !(Number(n) > 0))
+                && Object.values(tables).every(st => !st || !(st.count > 0));
+        }
+
+        // Writes the imported player into `target` (replacing it), or adds a new player. Returns the player's id.
+        function saveImportedPlayer(data, target) {
+            let player = target;
+            if (!player) {
+                player = { id: `p${playersData.nextId}`, color: playersData.nextId - 1 };
+                playersData.nextId += 1;
+                playersData.players.push(player);
+            }
+            Object.assign(player, data.player, { color: target ? target.color : player.color });
+            localStorage.setItem(playerKey(STORAGE_KEY_SCORES, player.id), JSON.stringify(data.scores));
+            localStorage.setItem(playerKey(STORAGE_KEY_STATS, player.id), JSON.stringify(data.tables));
+            localStorage.setItem(playerKey(STORAGE_KEY_FACTS, player.id), JSON.stringify(data.facts));
+            savePlayers();
+            return player.id;
+        }
+
+        function finishImport(id) {
+            document.getElementById('importCode').value = '';
+            selectPlayer(id);
+            const player = getActivePlayer();
+            showModal({
+                icon: 'fa-check',
+                iconClass: 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30',
+                title: t('importedTitle'),
+                text: t('importedText', { name: player.name }),
+                confirmLabel: t('ok'),
+                confirmClass: 'btn-gradient',
+                cancelLabel: null,
+                onConfirm: () => {}
             });
         }
 
