@@ -156,7 +156,7 @@
     <main class="w-full max-w-4xl mx-auto px-4 py-2 sm:py-4 flex-grow flex flex-col justify-center">
 
         <!-- VIEW 1: SETUP SCREEN -->
-        <div id="setupView" class="glass-panel rounded-3xl p-6 sm:p-10 shadow-2xl space-y-8 animate-fade-in">
+        <div id="setupView" class="glass-panel rounded-3xl p-5 sm:p-10 shadow-2xl space-y-5 sm:space-y-8 animate-fade-in">
             <!-- Active Player -->
             <button onclick="switchTab('players')" class="w-full flex items-center justify-between p-3 rounded-2xl glass-card">
                 <div class="flex items-center space-x-3 min-w-0">
@@ -168,14 +168,6 @@
                 </div>
                 <span class="text-xs text-indigo-300 font-semibold shrink-0 pl-2"><span data-i18n="switchPlayer">Switch</span> <i class="fa-solid fa-chevron-right ml-1"></i></span>
             </button>
-
-            <div class="text-center space-y-3">
-                <span class="px-3 py-1 rounded-full text-xs font-semibold bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 uppercase tracking-widest" data-i18n="setupBadge">Adaptive Quiz Setup</span>
-                <h2 class="text-2xl sm:text-4xl font-extrabold text-white" data-i18n="setupTitle">Select Your Practice Duration</h2>
-                <p class="text-slate-400 text-sm sm:text-base max-w-xl mx-auto" data-i18n="setupDesc">
-                    The adaptive algorithm tracks every single fact, like 8 + 5 or 7 × 8. Tricky or missed facts automatically appear more often until you master them!
-                </p>
-            </div>
 
             <!-- Operation Selection (several can be combined) -->
             <div class="space-y-4">
@@ -207,32 +199,38 @@
                 <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 text-center" data-i18n="durationLabel">
                     Practice Duration (Minutes)
                 </label>
-                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
-                    <button onclick="setDuration(5)" id="dur-5" class="dur-btn p-4 rounded-2xl glass-card text-center flex flex-col items-center border-indigo-500/80 bg-indigo-500/10">
+                <div class="grid grid-cols-4 gap-3 sm:gap-4">
+                    <button onclick="setDuration(5)" id="dur-5" class="dur-btn px-1 py-3 sm:p-4 rounded-2xl glass-card text-center flex flex-col items-center border-indigo-500/80 bg-indigo-500/10">
                         <span class="text-2xl font-extrabold font-mono-num text-white">5</span>
-                        <span class="text-xs text-slate-400 font-medium" data-i18n="minutes">Minutes</span>
-                        <span class="text-[10px] mt-2 text-indigo-300 font-mono-num" id="record-5">Best: 0</span>
+                        <span class="text-[10px] sm:text-xs text-slate-400 font-medium" data-i18n="minutes">Minutes</span>
+                        <span class="text-[10px] mt-1 sm:mt-2 text-indigo-300 font-mono-num leading-tight" id="record-5">Best: 0</span>
                     </button>
 
-                    <button onclick="setDuration(10)" id="dur-10" class="dur-btn p-4 rounded-2xl glass-card text-center flex flex-col items-center">
+                    <button onclick="setDuration(10)" id="dur-10" class="dur-btn px-1 py-3 sm:p-4 rounded-2xl glass-card text-center flex flex-col items-center">
                         <span class="text-2xl font-extrabold font-mono-num text-white">10</span>
-                        <span class="text-xs text-slate-400 font-medium" data-i18n="minutes">Minutes</span>
-                        <span class="text-[10px] mt-2 text-indigo-300 font-mono-num" id="record-10">Best: 0</span>
+                        <span class="text-[10px] sm:text-xs text-slate-400 font-medium" data-i18n="minutes">Minutes</span>
+                        <span class="text-[10px] mt-1 sm:mt-2 text-indigo-300 font-mono-num leading-tight" id="record-10">Best: 0</span>
                     </button>
 
-                    <button onclick="setDuration(15)" id="dur-15" class="dur-btn p-4 rounded-2xl glass-card text-center flex flex-col items-center">
+                    <button onclick="setDuration(15)" id="dur-15" class="dur-btn px-1 py-3 sm:p-4 rounded-2xl glass-card text-center flex flex-col items-center">
                         <span class="text-2xl font-extrabold font-mono-num text-white">15</span>
-                        <span class="text-xs text-slate-400 font-medium" data-i18n="minutes">Minutes</span>
-                        <span class="text-[10px] mt-2 text-indigo-300 font-mono-num" id="record-15">Best: 0</span>
+                        <span class="text-[10px] sm:text-xs text-slate-400 font-medium" data-i18n="minutes">Minutes</span>
+                        <span class="text-[10px] mt-1 sm:mt-2 text-indigo-300 font-mono-num leading-tight" id="record-15">Best: 0</span>
                     </button>
 
-                    <button onclick="setDuration(20)" id="dur-20" class="dur-btn p-4 rounded-2xl glass-card text-center flex flex-col items-center">
+                    <button onclick="setDuration(20)" id="dur-20" class="dur-btn px-1 py-3 sm:p-4 rounded-2xl glass-card text-center flex flex-col items-center">
                         <span class="text-2xl font-extrabold font-mono-num text-white">20</span>
-                        <span class="text-xs text-slate-400 font-medium" data-i18n="minutes">Minutes</span>
-                        <span class="text-[10px] mt-2 text-indigo-300 font-mono-num" id="record-20">Best: 0</span>
+                        <span class="text-[10px] sm:text-xs text-slate-400 font-medium" data-i18n="minutes">Minutes</span>
+                        <span class="text-[10px] mt-1 sm:mt-2 text-indigo-300 font-mono-num leading-tight" id="record-20">Best: 0</span>
                     </button>
                 </div>
             </div>
+
+            <!-- Start Button (right below the choices so kids see it without scrolling) -->
+            <button id="startBtn" onclick="startQuiz()" class="w-full py-5 rounded-2xl btn-gradient text-white font-bold text-lg sm:text-xl tracking-wide transition-all duration-300 flex items-center justify-center space-x-3 shadow-lg shadow-indigo-500/30">
+                <span data-i18n="startSession">Start Practice Session</span>
+                <i class="fa-solid fa-play"></i>
+            </button>
 
             <!-- Weakness Focus Banner -->
             <div id="weaknessBanner" class="p-4 rounded-2xl bg-indigo-950/40 border border-indigo-500/20 flex items-center space-x-4">
@@ -245,11 +243,10 @@
                 </div>
             </div>
 
-            <!-- Start Button -->
-            <button onclick="startQuiz()" class="w-full py-4 rounded-2xl btn-gradient text-white font-bold text-lg tracking-wide transition-all duration-300 flex items-center justify-center space-x-2">
-                <span data-i18n="startSession">Start Practice Session</span>
-                <i class="fa-solid fa-play text-sm"></i>
-            </button>
+            <!-- How it works -->
+            <p class="text-slate-500 text-xs sm:text-sm text-center max-w-xl mx-auto px-2" data-i18n="setupDesc">
+                The adaptive algorithm tracks every single fact, like 8 + 5 or 7 × 8. Tricky or missed facts automatically appear more often until you master them!
+            </p>
         </div>
 
         <!-- VIEW 2: ACTIVE QUIZ SCREEN -->
@@ -294,7 +291,7 @@
                     <span id="opSymbol" class="text-indigo-400">×</span>
                     <span id="factor2">8</span>
                     <span class="text-slate-500">=</span>
-                    <span class="text-indigo-300">?</span>
+                    <span id="answerSlot" class="text-indigo-300">?</span>
                 </div>
 
                 <!-- Answer Display + Keypad (physical keyboard also works: digits, Backspace, Enter) -->
@@ -576,6 +573,9 @@
         let questionStartTime = 0;
         let currentQuestion = { num1: 2, num2: 2, answer: 4 };
         let answerBuffer = "";
+        const MAX_TRIES = 3;          // a missed question stays up for this many tries, then the answer is shown
+        const REVEAL_MS = 2000;       // how long the correct answer stays on screen
+        let revealTimer = null;
         let pausedAt = 0;
 
         let sessionState = {
@@ -1024,8 +1024,13 @@
                 key: fact.key,
                 num1: num1,
                 num2: num2,
-                answer: fact.answer
+                answer: fact.answer,
+                tries: 0
             };
+            sessionState.revealing = false;
+            const slot = document.getElementById('answerSlot');
+            slot.textContent = '?';
+            slot.className = 'text-indigo-300';
 
             // Display question
             document.getElementById('factor1').innerText = num1;
@@ -1061,7 +1066,7 @@
         }
 
         function pressKey(key) {
-            if (!sessionState.active || sessionState.paused) return;
+            if (!sessionState.active || sessionState.paused || sessionState.revealing) return;
             if (key === 'enter') {
                 submitAnswer();
                 return;
@@ -1079,6 +1084,9 @@
             if (answerBuffer) {
                 el.textContent = answerBuffer;
                 el.className = "text-white";
+            } else if (currentQuestion.tries > 0) {
+                el.textContent = t(currentQuestion.tries === MAX_TRIES - 1 ? 'lastTry' : 'tryAgain');
+                el.className = "text-amber-300 text-2xl";
             } else {
                 el.textContent = t('answer');
                 el.className = "text-slate-500";
@@ -1163,6 +1171,10 @@
             sessionState.paused = false;
             // Don't count paused time against the current question's response time
             questionStartTime += performance.now() - pausedAt;
+            if (sessionState.nextPending) {
+                sessionState.nextPending = false;
+                generateQuestion();
+            }
         }
 
         document.addEventListener('visibilitychange', () => {
@@ -1205,6 +1217,7 @@
                 masteredAtStart: countMastered(factStats)
             };
             lastFactKey = null;
+            clearTimeout(revealTimer);
 
             document.getElementById('scoreDisplay').innerText = "0";
             document.getElementById('targetRecordDisplay').innerText = highScores[scoreKey(selectedDuration)] || 0;
@@ -1239,62 +1252,87 @@
         }
 
         function submitAnswer() {
-            if (!sessionState.active || sessionState.paused) return;
+            if (!sessionState.active || sessionState.paused || sessionState.revealing) return;
 
             const userVal = parseInt(answerBuffer, 10);
             if (isNaN(userVal)) return;
 
-            const responseTimeSec = (performance.now() - questionStartTime) / 1000;
-            sessionState.totalQuestions++;
-            sessionState.totalResponseTime += responseTimeSec;
+            const isCorrect = userVal === currentQuestion.answer;
+            const firstTry = currentQuestion.tries === 0;
 
-            const num1 = currentQuestion.num1;
-            const num2 = currentQuestion.num2;
-            const isTimesTable = currentQuestion.op === 'mul'; // the per-table chart covers multiplication
-
-            // Track stats for both factors
-            if (isTimesTable) {
-                [num1, num2].forEach(n => {
-                    if (!tableStats[n]) tableStats[n] = { totalTime: 0, count: 0, mistakes: 0 };
-                    tableStats[n].totalTime += responseTimeSec;
-                    tableStats[n].count += 1;
-                });
-            }
+            // Only the first try counts towards stats, speed and score; retries are for learning
+            if (firstTry) recordAttempt(isCorrect);
 
             // Animate only the question itself, not the keypad
             const qContainer = document.getElementById('questionLine');
 
-            const isCorrect = userVal === currentQuestion.answer;
-            recordFact(currentQuestion.key, isCorrect, responseTimeSec);
-
             if (isCorrect) {
-                // Correct answer
-                sessionState.score++;
-                sessionState.correctAnswers++;
                 playSound('correct');
-
+                if (firstTry) {
+                    sessionState.score++;
+                    document.getElementById('scoreDisplay').innerText = sessionState.score;
+                }
                 qContainer.classList.add('animate-success');
                 setTimeout(() => qContainer.classList.remove('animate-success'), 300);
-
-                document.getElementById('scoreDisplay').innerText = sessionState.score;
-            } else {
-                // Wrong answer
-                playSound('wrong');
-                if (isTimesTable) {
-                    tableStats[num1].mistakes += 1;
-                    tableStats[num2].mistakes += 1;
-                }
-
-                qContainer.classList.add('animate-error');
-                setTimeout(() => qContainer.classList.remove('animate-error'), 400);
+                generateQuestion();
+                return;
             }
+
+            // Wrong answer: the same question stays up so they can try again
+            playSound('wrong');
+            qContainer.classList.add('animate-error');
+            setTimeout(() => qContainer.classList.remove('animate-error'), 400);
+            currentQuestion.tries++;
+            answerBuffer = "";
+
+            if (currentQuestion.tries < MAX_TRIES) {
+                renderAnswer();
+                return;
+            }
+
+            // Out of tries: show the right answer for a moment, then move on
+            sessionState.revealing = true;
+            const slot = document.getElementById('answerSlot');
+            slot.textContent = currentQuestion.answer;
+            slot.className = 'text-amber-300';
+            const el = document.getElementById('answerText');
+            el.textContent = '';
+            revealTimer = setTimeout(nextAfterReveal, REVEAL_MS);
+        }
+
+        function nextAfterReveal() {
+            if (!sessionState.active) return;
+            if (sessionState.paused) {
+                sessionState.nextPending = true; // resumeSession picks it up
+                return;
+            }
+            generateQuestion();
+        }
+
+        function recordAttempt(isCorrect) {
+            const responseTimeSec = (performance.now() - questionStartTime) / 1000;
+            sessionState.totalQuestions++;
+            sessionState.totalResponseTime += responseTimeSec;
+            if (isCorrect) sessionState.correctAnswers++;
+
+            const num1 = currentQuestion.num1;
+            const num2 = currentQuestion.num2;
+
+            // Track stats for both factors (the per-table chart covers multiplication)
+            if (currentQuestion.op === 'mul') {
+                [num1, num2].forEach(n => {
+                    if (!tableStats[n]) tableStats[n] = { totalTime: 0, count: 0, mistakes: 0 };
+                    tableStats[n].totalTime += responseTimeSec;
+                    tableStats[n].count += 1;
+                    if (!isCorrect) tableStats[n].mistakes += 1;
+                });
+            }
+
+            recordFact(currentQuestion.key, isCorrect, responseTimeSec);
 
             // Save updated stats to localStorage
             localStorage.setItem(playerKey(STORAGE_KEY_STATS), JSON.stringify(tableStats));
             localStorage.setItem(playerKey(STORAGE_KEY_FACTS), JSON.stringify(factStats));
-
-            // Generate next question
-            generateQuestion();
         }
 
         function confirmQuit() {
