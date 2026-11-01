@@ -284,6 +284,8 @@
             <!-- Question Box -->
             <div id="questionContainer" class="py-2 sm:py-8 text-center space-y-4 sm:space-y-6 transition-all duration-200">
                 <div class="text-slate-400 text-xs uppercase tracking-widest font-semibold flex items-center justify-center space-x-2">
+                    <!-- 24-hour clock questions: morning / afternoon / evening / night, since a clock face alone can't tell 3:15 from 15:15 -->
+                    <span id="dayPeriod" class="hidden px-2.5 py-1 rounded-md bg-amber-500/10 text-amber-300 border border-amber-500/30 normal-case tracking-normal text-sm font-semibold"></span>
                     <span id="adaptiveTag" class="px-2.5 py-1 rounded-md bg-purple-500/10 text-purple-300 border border-purple-500/20">
                         <i class="fa-solid fa-sliders text-[10px] mr-1"></i> <span data-i18n="tagStandard">Standard Question</span>
                     </span>
@@ -935,6 +937,31 @@
         function formatClock(h, m) {
             return `${h}:${String(m).padStart(2, '0')}`;
         }
+        // 24-hour times are written the digital way: 03:15, 15:15, 00:30
+        function clockLabel(h, m, is24) {
+            return is24 ? `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}` : formatClock(h, m);
+        }
+
+        // 12- or 24-hour clock: each player can choose; until they do, it follows the language's habit
+        // (Swedish and French use 24-hour, US English 12-hour)
+        function uses24h(player = getActivePlayer()) {
+            if (typeof player.clock24 === 'boolean') return player.clock24;
+            try {
+                const locale = languageSetting === 'auto' ? (navigator.languages?.[0] || navigator.language || lang) : lang;
+                const cycle = new Intl.DateTimeFormat(locale, { hour: 'numeric' }).resolvedOptions().hourCycle;
+                return cycle === 'h23' || cycle === 'h24';
+            } catch (e) {
+                return lang !== 'en';
+            }
+        }
+
+        const DAY_PERIODS = [ // [from hour, text key, icon]
+            [0, 'periodNight', 'fa-moon'], [6, 'periodMorning', 'fa-cloud-sun'],
+            [12, 'periodAfternoon', 'fa-sun'], [18, 'periodEvening', 'fa-cloud-moon']
+        ];
+        function dayPeriod(h24) {
+            return DAY_PERIODS.filter(([from]) => h24 >= from).pop();
+        }
         // Cells across the largest mastery grid (one header + one per value), for any age group
         const MAX_GRID_COLUMNS = Math.max(...OP_ORDER.map(op =>
             1 + Math.max(opRows(op, { ageGroup: 'older' }).length, opCols(op, { ageGroup: 'older' }).length)));
@@ -998,7 +1025,11 @@
 
         // How a fact reads on screen, e.g. "7 × 8 = 56" or "3:15"
         function factText(fact) {
-            if (fact.op === 'clk') return formatClock(fact.x, fact.y);
+            if (fact.op === 'clk') {
+                if (!uses24h()) return formatClock(fact.x, fact.y);
+                const am = fact.x % 12;
+                return `${clockLabel(am, fact.y, true)} / ${clockLabel(am + 12, fact.y, true)}`;
+            }
             return `${fact.x} ${OPERATIONS[fact.op].symbol} ${fact.y} = ${fact.answer}`;
         }
 
@@ -1074,6 +1105,13 @@
                 answer: fact.answer,
                 tries: 0
             };
+            if (fact.op === 'clk' && uses24h()) {
+                // The grid's "3:15" stands for both 03:15 and 15:15; pick one half of the day
+                const h24 = (fact.x % 12) + (Math.random() < 0.5 ? 0 : 12);
+                currentQuestion.num1 = h24;
+                currentQuestion.answer = h24 * 100 + fact.y;
+                currentQuestion.clock24 = true;
+            }
             sessionState.revealing = false;
             const slot = document.getElementById('answerSlot');
             slot.textContent = '?';
@@ -1101,9 +1139,17 @@
             const svg = document.getElementById('clockSvg');
             ['w-40', 'h-40', 'sm:w-52', 'sm:h-52'].forEach(c => svg.classList.toggle(c, !besideClock));
             ['w-32', 'h-32', 'sm:w-44', 'sm:h-44'].forEach(c => svg.classList.toggle(c, besideClock));
+            const periodEl = document.getElementById('dayPeriod');
+            periodEl.classList.toggle('hidden', !currentQuestion.clock24);
+            if (currentQuestion.clock24) {
+                const [, textKey, icon] = dayPeriod(currentQuestion.num1);
+                const i = document.createElement('i');
+                i.className = `fa-solid ${icon} mr-1.5`;
+                periodEl.replaceChildren(i, document.createTextNode(t(textKey)));
+            }
             if (isClock) {
-                showClock(fact.x, fact.y);
-                if (useChoices) renderClockChoices(fact);
+                showClock(currentQuestion.num1, currentQuestion.num2);
+                if (useChoices) renderClockChoices();
             } else {
                 document.getElementById('factor1').innerText = num1;
                 document.getElementById('opSymbol').innerText = OPERATIONS[fact.op].symbol;
@@ -1124,6 +1170,9 @@
                 tag.innerHTML = `<i class="fa-solid fa-sliders text-[10px] mr-1"></i> ${t('tagReview')}`;
             }
 
+            // The time-of-day label takes the tag's place on 24-hour clock questions
+            tag.classList.toggle('hidden', !!currentQuestion.clock24);
+
             answerBuffer = "";
             renderAnswer();
 
@@ -1133,14 +1182,23 @@
         /* ==========================================================================
            CLOCK QUESTIONS
            ========================================================================== */
-        // Typed times: "3" → 3:00, "315" → 3:15, "1245" → 12:45. Returns h*100+m, or NaN.
+        // Typed times: "3" → 3:00, "315" → 3:15, "1545" → 15:45. Returns h*100+m, -1 for an impossible time, or NaN.
         function parseTypedTime(buffer) {
             if (!buffer) return NaN;
             const digits = buffer.length <= 2 ? buffer + '00' : buffer;
             const h = parseInt(digits.slice(0, -2), 10);
             const m = parseInt(digits.slice(-2), 10);
-            if (h < 1 || h > 12 || m > 59) return -1; // a real try, just not a clock time
+            if (h > 23 || m > 59) return -1; // a real try, just not a clock time
             return h * 100 + m;
+        }
+
+        // 24-hour mode wants the exact time of day. On a 12-hour clock the face can't tell
+        // morning from afternoon, so 3:15, 15:15 and 03:15 are all right (and 0:15 for 12:15).
+        function clockAnswerMatches(value) {
+            if (value < 0) return false;
+            if (currentQuestion.clock24) return value === currentQuestion.answer;
+            const half = v => (Math.floor(v / 100) % 12) * 100 + v % 100;
+            return half(value) === half(currentQuestion.answer);
         }
 
         function formatTypedTime(buffer) {
@@ -1181,20 +1239,26 @@
             document.getElementById('minuteHand').setAttribute('transform', `rotate(${m * 6} 100 100)`);
         }
 
-        // Four choices: the right time plus the mix-ups kids actually make
-        // (hour one off, e.g. 2:30 vs 3:30, and hour/minute hands swapped)
-        function renderClockChoices(fact) {
-            const pool = allFacts('clk').map(f => f.answer);
-            const right = fact.answer;
-            const wrap = n => ((n - 1 + 12) % 12) + 1;
-            const likely = [
-                wrap(fact.x + 1) * 100 + fact.y,
-                wrap(fact.x - 1) * 100 + fact.y,
-                (fact.y === 0 ? 12 : fact.y / 5) * 100 + (fact.x % 12) * 5
-            ];
-            const options = [right];
+        // Four choices: the right time plus the mix-ups kids actually make (the other half of the
+        // day on a 24-hour clock, the hour one off, e.g. 2:30 vs 3:30, and hour/minute hands swapped)
+        function renderClockChoices() {
+            const { num1: h, num2: m, answer: right, clock24: is24 } = currentQuestion;
+            const wrap = n => is24 ? (n + 24) % 24 : ((n - 1 + 12) % 12) + 1;
+            const toMode = v => { // a 12-hour value in this question's half of the day, or a random one
+                const hh = Math.floor(v / 100), mm = v % 100;
+                return is24 ? ((hh % 12) + (Math.random() < 0.5 ? 0 : 12)) * 100 + mm : v;
+            };
             const shuffle = list => list.map(v => [Math.random(), v]).sort((a, b) => a[0] - b[0]).map(p => p[1]);
-            for (const v of [...shuffle(likely), ...shuffle(pool)]) {
+            const swapped = (m === 0 ? 12 : m / 5);
+            const likely = shuffle([
+                wrap(h + 1) * 100 + m,
+                wrap(h - 1) * 100 + m,
+                (is24 ? (swapped % 12) + (h >= 12 ? 12 : 0) : swapped) * 100 + (h % 12) * 5
+            ]);
+            if (is24) likely.unshift(((h + 12) % 24) * 100 + m);
+            const pool = shuffle(allFacts('clk').map(f => toMode(f.answer)));
+            const options = [right];
+            for (const v of [...likely, ...pool]) {
                 if (options.length === 4) break;
                 if (!options.includes(v)) options.push(v);
             }
@@ -1204,7 +1268,7 @@
                 const btn = document.createElement('button');
                 btn.className = 'clock-choice h-16 rounded-xl glass-card text-3xl font-bold font-mono-num text-white transition-colors';
                 btn.dataset.value = value;
-                btn.textContent = formatClock(Math.floor(value / 100), value % 100);
+                btn.textContent = clockLabel(Math.floor(value / 100), value % 100, is24);
                 btn.addEventListener('pointerdown', (e) => {
                     e.preventDefault();
                     if (!sessionState.active || sessionState.paused || sessionState.revealing || btn.disabled) return;
@@ -1428,7 +1492,7 @@
             const userVal = currentQuestion.op === 'clk' ? parseTypedTime(answerBuffer) : parseInt(answerBuffer, 10);
             if (isNaN(userVal)) return;
 
-            const isCorrect = userVal === currentQuestion.answer;
+            const isCorrect = currentQuestion.op === 'clk' ? clockAnswerMatches(userVal) : userVal === currentQuestion.answer;
             if (currentQuestion.choices) markClockChoice(userVal, isCorrect);
             const firstTry = currentQuestion.tries === 0;
 
@@ -1471,7 +1535,7 @@
             el.textContent = '';
             if (currentQuestion.op === 'clk') {
                 // No "= ?" line under a clock: show the time in the answer box instead
-                el.textContent = formatClock(currentQuestion.num1, currentQuestion.num2);
+                el.textContent = clockLabel(currentQuestion.num1, currentQuestion.num2, currentQuestion.clock24);
                 el.className = 'text-amber-300';
                 if (currentQuestion.choices) markClockChoice(currentQuestion.answer, true);
             }
@@ -1791,7 +1855,8 @@
             const mastered = facts.filter(f => factLevel(f.key) === 'mastered').length;
             document.getElementById('masterySummary').innerText = t('masteredCount', { n: mastered, total });
             document.getElementById('masteryBar').style.width = `${(mastered / total) * 100}%`;
-            document.getElementById('gridHint').innerText = def.gridHintKey ? t(def.gridHintKey) : '';
+            const hintKey = op === 'clk' && uses24h() ? 'gridHintClk24' : def.gridHintKey;
+            document.getElementById('gridHint').innerText = hintKey ? t(hintKey) : '';
             document.getElementById('factDetail').innerText = t('tapSquare');
         }
 
@@ -1898,7 +1963,22 @@
                     savePlayers();
                     renderPlayerList();
                 });
-                row.appendChild(age);
+                // Age group and 12/24 h chips stacked, to leave room for the name on narrow phones
+                const chips = document.createElement('div');
+                chips.className = 'shrink-0 flex flex-col items-stretch gap-1 text-center';
+                chips.appendChild(age);
+                row.appendChild(chips);
+
+                const clock = document.createElement('button');
+                clock.className = 'shrink-0 px-2 py-1 rounded-md text-[11px] font-semibold border bg-amber-500/10 text-amber-300 border-amber-500/30 whitespace-nowrap';
+                clock.textContent = uses24h(player) ? '24 h' : '12 h';
+                clock.setAttribute('aria-label', t('changeClock', { name: player.name }));
+                clock.addEventListener('click', () => {
+                    player.clock24 = !uses24h(player);
+                    savePlayers();
+                    renderPlayerList();
+                });
+                chips.appendChild(clock);
 
                 row.appendChild(iconButton('fa-pen', t('rename', { name: player.name }), () => startRename(row, name, player)));
                 if (playersData.players.length > 1) {
@@ -2045,7 +2125,7 @@
             });
             return {
                 app: 'mm', v: 1,
-                player: { name: player.name, color: player.color, ageGroup: player.ageGroup, ops: player.ops },
+                player: { name: player.name, color: player.color, ageGroup: player.ageGroup, ops: player.ops, clock24: player.clock24 },
                 scores: highScores, tables, facts
             };
         }
@@ -2081,6 +2161,7 @@
                 ageGroup: raw.player.ageGroup === 'young' ? 'young' : 'older',
                 ops: OP_ORDER.filter(op => ops.includes(op))
             };
+            if (typeof raw.player.clock24 === 'boolean') player.clock24 = raw.player.clock24;
             if (player.ops.length === 0) player.ops = ['mul'];
 
             const scores = {};
