@@ -174,22 +174,26 @@
                 <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 text-center" data-i18n="whatToPractice">
                     What To Practice
                 </label>
-                <div class="grid grid-cols-4 gap-3 sm:gap-4">
-                    <button onclick="toggleOperation('add')" id="op-add" class="op-btn p-3 rounded-2xl glass-card text-center flex flex-col items-center">
+                <div class="grid grid-cols-5 gap-2 sm:gap-4">
+                    <button onclick="toggleOperation('add')" id="op-add" class="op-btn px-1 py-3 sm:p-3 rounded-2xl glass-card text-center flex flex-col items-center">
                         <span class="text-3xl font-extrabold font-mono-num text-white">+</span>
                         <span class="text-[10px] sm:text-xs text-slate-400 font-medium" data-i18n="opAddShort">Add</span>
                     </button>
-                    <button onclick="toggleOperation('sub')" id="op-sub" class="op-btn p-3 rounded-2xl glass-card text-center flex flex-col items-center">
+                    <button onclick="toggleOperation('sub')" id="op-sub" class="op-btn px-1 py-3 sm:p-3 rounded-2xl glass-card text-center flex flex-col items-center">
                         <span class="text-3xl font-extrabold font-mono-num text-white">−</span>
                         <span class="text-[10px] sm:text-xs text-slate-400 font-medium" data-i18n="opSubShort">Subtract</span>
                     </button>
-                    <button onclick="toggleOperation('mul')" id="op-mul" class="op-btn p-3 rounded-2xl glass-card text-center flex flex-col items-center">
+                    <button onclick="toggleOperation('mul')" id="op-mul" class="op-btn px-1 py-3 sm:p-3 rounded-2xl glass-card text-center flex flex-col items-center">
                         <span class="text-3xl font-extrabold font-mono-num text-white">×</span>
                         <span class="text-[10px] sm:text-xs text-slate-400 font-medium" data-i18n="opMulShort">Multiply</span>
                     </button>
-                    <button onclick="toggleOperation('div')" id="op-div" class="op-btn p-3 rounded-2xl glass-card text-center flex flex-col items-center">
+                    <button onclick="toggleOperation('div')" id="op-div" class="op-btn px-1 py-3 sm:p-3 rounded-2xl glass-card text-center flex flex-col items-center">
                         <span class="text-3xl font-extrabold font-mono-num text-white">÷</span>
                         <span class="text-[10px] sm:text-xs text-slate-400 font-medium" data-i18n="opDivShort">Divide</span>
+                    </button>
+                    <button onclick="toggleOperation('clk')" id="op-clk" class="op-btn px-1 py-3 sm:p-3 rounded-2xl glass-card text-center flex flex-col items-center">
+                        <span class="text-3xl font-extrabold text-white h-9 flex items-center"><i class="fa-regular fa-clock text-[1.6rem]"></i></span>
+                        <span class="text-[10px] sm:text-xs text-slate-400 font-medium" data-i18n="opClkShort">Clock</span>
                     </button>
                 </div>
             </div>
@@ -285,6 +289,12 @@
                     </span>
                 </div>
 
+                <!-- Clock face for "read the clock" questions (hands are set in showClock) -->
+                <!-- (for typed answers the answer box moves in beside the clock to save height) -->
+                <div id="clockFace" class="hidden max-w-xs mx-auto flex justify-center items-center gap-3">
+                    <svg id="clockSvg" viewBox="0 0 200 200" class="shrink-0 w-40 h-40 sm:w-52 sm:h-52" role="img"></svg>
+                </div>
+
                 <!-- Number Display -->
                 <div id="questionLine" class="text-5xl sm:text-7xl font-extrabold font-mono-num tracking-tight text-white flex justify-center items-center space-x-3 sm:space-x-4">
                     <span id="factor1">7</span>
@@ -299,6 +309,9 @@
                     <div id="answerDisplay" class="w-full h-16 px-6 rounded-2xl bg-slate-900/80 border-2 border-indigo-500/40 flex items-center justify-center text-3xl font-bold font-mono-num">
                         <span id="answerText" class="text-slate-500">Answer</span>
                     </div>
+
+                    <!-- Multiple choice for the youngest players' clock questions -->
+                    <div id="clockChoices" class="hidden grid grid-cols-2 gap-2 sm:gap-3"></div>
 
                     <div id="keypad" class="grid grid-cols-3 gap-2 sm:gap-3">
                         <button class="key h-14 rounded-xl glass-card text-2xl font-bold font-mono-num text-white" onpointerdown="keyTap(event, '1')">1</button>
@@ -398,7 +411,7 @@
 
             <!-- Mastery Grid: one cell per fact, one tab per operation -->
             <div class="p-4 rounded-2xl glass-card space-y-3">
-                <div id="gridTabs" class="grid grid-cols-4 gap-2"></div>
+                <div id="gridTabs" class="grid grid-cols-5 gap-2"></div>
                 <div class="flex justify-between items-baseline">
                     <h3 class="text-sm font-semibold text-white" data-i18n="factMastery">Fact Mastery</h3>
                     <span id="masterySummary" class="text-xs text-emerald-300 font-mono-num">0 / 66 mastered</span>
@@ -896,11 +909,35 @@
                    gridHintKey: null },
             div: { symbol: '÷', keySymbol: '/', nameKey: 'opDiv',        range: [2, 12], commutative: false,
                    make: (r, c) => ({ x: r * c, y: r, answer: c }),           // (c × r) ÷ r = c
-                   gridHintKey: 'gridHintDiv' }
+                   gridHintKey: 'gridHintDiv' },
+            // Reading an analogue clock: rows are hours, columns are minutes ("3:15").
+            // Ages 5–7 get o'clock, quarter past, half past and quarter to, and pick from 4 choices;
+            // 8+ get every 5 minutes and type the time on the keypad.
+            clk: { symbol: '', icon: 'fa-regular fa-clock', keySymbol: ':', nameKey: 'opClk', commutative: false,
+                   rows: () => range(1, 12),
+                   cols: (player) => isYoung(player) ? [0, 15, 30, 45] : range(0, 11).map(i => i * 5),
+                   make: (r, c) => ({ x: r, y: c, answer: r * 100 + c }),     // 3:15 is typed as 315
+                   gridHintKey: 'gridHintClk' }
         };
-        const OP_ORDER = ['add', 'sub', 'mul', 'div'];
-        // Columns in the widest mastery grid (one header column + one per number)
-        const MAX_GRID_COLUMNS = Math.max(...OP_ORDER.map(op => OPERATIONS[op].range[1] - OPERATIONS[op].range[0] + 2));
+        const OP_ORDER = ['add', 'sub', 'mul', 'div', 'clk'];
+
+        function range(lo, hi) {
+            return Array.from({ length: hi - lo + 1 }, (_, i) => lo + i);
+        }
+        function opRows(op, player = getActivePlayer()) {
+            const def = OPERATIONS[op];
+            return def.rows ? def.rows(player) : range(...def.range);
+        }
+        function opCols(op, player = getActivePlayer()) {
+            const def = OPERATIONS[op];
+            return def.cols ? def.cols(player) : range(...def.range);
+        }
+        function formatClock(h, m) {
+            return `${h}:${String(m).padStart(2, '0')}`;
+        }
+        // Cells across the largest mastery grid (one header + one per value), for any age group
+        const MAX_GRID_COLUMNS = Math.max(...OP_ORDER.map(op =>
+            1 + Math.max(opRows(op, { ageGroup: 'older' }).length, opCols(op, { ageGroup: 'older' }).length)));
 
         const FACT_SPEED_SMOOTHING = 0.4;   // weight of the newest answer in the running average
         const WRONG_ANSWER_PENALTY_SEC = 8; // a mistake counts like a very slow answer
@@ -921,6 +958,7 @@
 
         // Seconds that count as "automatic" (mastered) and as struggling
         function speedTargets(op, player) {
+            if (op === 'clk') return isYoung(player) ? { mastered: 7, struggling: 12 } : { mastered: 6, struggling: 10 };
             if (isYoung(player)) return { mastered: 5, struggling: 9 };
             if (op === 'div') return { mastered: 4, struggling: 7 };
             return { mastered: 3, struggling: 6 };
@@ -929,30 +967,39 @@
         function factFor(op, r, c) {
             const def = OPERATIONS[op];
             const { x, y, answer } = def.make(r, c);
-            const key = def.commutative
+            const key = op === 'clk' ? formatClock(x, y)
+                : def.commutative
                 ? `${Math.min(x, y)}${def.keySymbol}${Math.max(x, y)}`
                 : `${x}${def.keySymbol}${y}`;
             return { op, key, x, y, answer };
         }
 
-        function allFacts(op) {
+        function allFacts(op, player = getActivePlayer()) {
             const def = OPERATIONS[op];
-            const [lo, hi] = def.range;
             const facts = [];
-            for (let r = lo; r <= hi; r++) {
-                for (let c = def.commutative ? r : lo; c <= hi; c++) facts.push(factFor(op, r, c));
-            }
+            opRows(op, player).forEach(r => {
+                opCols(op, player).forEach(c => {
+                    if (!def.commutative || c >= r) facts.push(factFor(op, r, c));
+                });
+            });
             return facts;
         }
 
         function opOfKey(key) {
-            const sym = key.match(/[+\-x\/]/)[0];
+            const sym = key.match(/[+\-x\/:]/)[0];
             return OP_ORDER.find(op => OPERATIONS[op].keySymbol === sym);
         }
 
         function formatFactKey(key) {
             const op = opOfKey(key);
+            if (op === 'clk') return key;
             return key.replace(OPERATIONS[op].keySymbol, ` ${OPERATIONS[op].symbol} `);
+        }
+
+        // How a fact reads on screen, e.g. "7 × 8 = 56" or "3:15"
+        function factText(fact) {
+            if (fact.op === 'clk') return formatClock(fact.x, fact.y);
+            return `${fact.x} ${OPERATIONS[fact.op].symbol} ${fact.y} = ${fact.answer}`;
         }
 
         function getFactLevel(stat, op, player) {
@@ -1032,10 +1079,36 @@
             slot.textContent = '?';
             slot.className = 'text-indigo-300';
 
-            // Display question
-            document.getElementById('factor1').innerText = num1;
-            document.getElementById('opSymbol').innerText = OPERATIONS[fact.op].symbol;
-            document.getElementById('factor2').innerText = num2;
+            // Display question: an analogue clock, or "a ○ b = ?"
+            const isClock = fact.op === 'clk';
+            const useChoices = isClock && isYoung();
+            currentQuestion.choices = useChoices;
+            document.getElementById('clockFace').classList.toggle('hidden', !isClock);
+            document.getElementById('questionLine').classList.toggle('hidden', isClock);
+            document.getElementById('keypad').classList.toggle('hidden', useChoices);
+            document.getElementById('clockChoices').classList.toggle('hidden', !useChoices);
+            // Typed clock answers: answer box beside a smaller clock; otherwise it sits above the keypad
+            const answerBox = document.getElementById('answerDisplay');
+            const besideClock = isClock && !useChoices;
+            if (besideClock && answerBox.parentElement.id !== 'clockFace') {
+                document.getElementById('clockFace').appendChild(answerBox);
+            } else if (!besideClock && answerBox.parentElement.id === 'clockFace') {
+                document.getElementById('clockChoices').before(answerBox);
+            }
+            answerBox.classList.toggle('flex-1', besideClock);
+            answerBox.classList.toggle('px-6', !besideClock);
+            answerBox.classList.toggle('px-2', besideClock);
+            const svg = document.getElementById('clockSvg');
+            ['w-40', 'h-40', 'sm:w-52', 'sm:h-52'].forEach(c => svg.classList.toggle(c, !besideClock));
+            ['w-32', 'h-32', 'sm:w-44', 'sm:h-44'].forEach(c => svg.classList.toggle(c, besideClock));
+            if (isClock) {
+                showClock(fact.x, fact.y);
+                if (useChoices) renderClockChoices(fact);
+            } else {
+                document.getElementById('factor1').innerText = num1;
+                document.getElementById('opSymbol').innerText = OPERATIONS[fact.op].symbol;
+                document.getElementById('factor2').innerText = num2;
+            }
 
             // Highlight adaptive weight status
             const level = factLevel(fact.key);
@@ -1058,6 +1131,102 @@
         }
 
         /* ==========================================================================
+           CLOCK QUESTIONS
+           ========================================================================== */
+        // Typed times: "3" → 3:00, "315" → 3:15, "1245" → 12:45. Returns h*100+m, or NaN.
+        function parseTypedTime(buffer) {
+            if (!buffer) return NaN;
+            const digits = buffer.length <= 2 ? buffer + '00' : buffer;
+            const h = parseInt(digits.slice(0, -2), 10);
+            const m = parseInt(digits.slice(-2), 10);
+            if (h < 1 || h > 12 || m > 59) return -1; // a real try, just not a clock time
+            return h * 100 + m;
+        }
+
+        function formatTypedTime(buffer) {
+            return buffer.length <= 2 ? buffer : `${buffer.slice(0, -2)}:${buffer.slice(-2)}`;
+        }
+
+        function buildClockFace() {
+            const svg = document.getElementById('clockSvg');
+            const NS = 'http://www.w3.org/2000/svg';
+            const add = (tag, attrs, text) => {
+                const el = document.createElementNS(NS, tag);
+                Object.entries(attrs).forEach(([k, v]) => el.setAttribute(k, v));
+                if (text !== undefined) el.textContent = text;
+                svg.appendChild(el);
+                return el;
+            };
+            add('circle', { cx: 100, cy: 100, r: 96, fill: '#f8fafc', stroke: '#6366f1', 'stroke-width': 6 });
+            for (let i = 0; i < 60; i++) {
+                const big = i % 5 === 0;
+                add('line', { x1: 100, y1: 10, x2: 100, y2: big ? 22 : 16, stroke: big ? '#334155' : '#94a3b8',
+                              'stroke-width': big ? 3 : 1.5, 'stroke-linecap': 'round', transform: `rotate(${i * 6} 100 100)` });
+            }
+            for (let n = 1; n <= 12; n++) {
+                const a = n * Math.PI / 6;
+                add('text', { x: 100 + 66 * Math.sin(a), y: 100 - 66 * Math.cos(a), 'text-anchor': 'middle', 'dominant-baseline': 'central',
+                              'font-size': 22, 'font-weight': 700, fill: '#1e293b', 'font-family': 'inherit' }, n);
+            }
+            add('line', { id: 'hourHand', x1: 100, y1: 100, x2: 100, y2: 52, stroke: '#1e293b', 'stroke-width': 9, 'stroke-linecap': 'round' });
+            add('line', { id: 'minuteHand', x1: 100, y1: 100, x2: 100, y2: 24, stroke: '#6366f1', 'stroke-width': 5, 'stroke-linecap': 'round' });
+            add('circle', { cx: 100, cy: 100, r: 7, fill: '#1e293b' });
+        }
+
+        function showClock(h, m) {
+            const svg = document.getElementById('clockSvg');
+            if (!svg.childElementCount) buildClockFace();
+            svg.setAttribute('aria-label', t('clockQuestion'));
+            document.getElementById('hourHand').setAttribute('transform', `rotate(${(h % 12) * 30 + m / 2} 100 100)`);
+            document.getElementById('minuteHand').setAttribute('transform', `rotate(${m * 6} 100 100)`);
+        }
+
+        // Four choices: the right time plus the mix-ups kids actually make
+        // (hour one off, e.g. 2:30 vs 3:30, and hour/minute hands swapped)
+        function renderClockChoices(fact) {
+            const pool = allFacts('clk').map(f => f.answer);
+            const right = fact.answer;
+            const wrap = n => ((n - 1 + 12) % 12) + 1;
+            const likely = [
+                wrap(fact.x + 1) * 100 + fact.y,
+                wrap(fact.x - 1) * 100 + fact.y,
+                (fact.y === 0 ? 12 : fact.y / 5) * 100 + (fact.x % 12) * 5
+            ];
+            const options = [right];
+            const shuffle = list => list.map(v => [Math.random(), v]).sort((a, b) => a[0] - b[0]).map(p => p[1]);
+            for (const v of [...shuffle(likely), ...shuffle(pool)]) {
+                if (options.length === 4) break;
+                if (!options.includes(v)) options.push(v);
+            }
+            const box = document.getElementById('clockChoices');
+            box.replaceChildren();
+            shuffle(options).forEach(value => {
+                const btn = document.createElement('button');
+                btn.className = 'clock-choice h-16 rounded-xl glass-card text-3xl font-bold font-mono-num text-white transition-colors';
+                btn.dataset.value = value;
+                btn.textContent = formatClock(Math.floor(value / 100), value % 100);
+                btn.addEventListener('pointerdown', (e) => {
+                    e.preventDefault();
+                    if (!sessionState.active || sessionState.paused || sessionState.revealing || btn.disabled) return;
+                    answerBuffer = String(value);
+                    submitAnswer();
+                });
+                box.appendChild(btn);
+            });
+        }
+
+        function markClockChoice(value, isCorrect) {
+            const btn = document.querySelector(`#clockChoices [data-value="${value}"]`);
+            if (!btn) return;
+            if (isCorrect) {
+                btn.classList.add('bg-emerald-500/40', 'border-emerald-400');
+            } else {
+                btn.disabled = true;
+                btn.classList.add('opacity-30');
+            }
+        }
+
+        /* ==========================================================================
            KEYPAD INPUT
            ========================================================================== */
         function keyTap(e, key) {
@@ -1073,7 +1242,9 @@
             }
             if (key === 'back') {
                 answerBuffer = answerBuffer.slice(0, -1);
-            } else if (answerBuffer.length < 3) { // largest answer is 144
+            } else if (currentQuestion.choices) {
+                return; // youngest players tap one of the clock choices instead
+            } else if (answerBuffer.length < (currentQuestion.op === 'clk' ? 4 : 3)) { // largest answers: 144, 12:55
                 answerBuffer += key;
             }
             renderAnswer();
@@ -1082,14 +1253,14 @@
         function renderAnswer() {
             const el = document.getElementById('answerText');
             if (answerBuffer) {
-                el.textContent = answerBuffer;
+                el.textContent = currentQuestion.op === 'clk' ? formatTypedTime(answerBuffer) : answerBuffer;
                 el.className = "text-white";
             } else if (currentQuestion.tries > 0) {
                 el.textContent = t(currentQuestion.tries === MAX_TRIES - 1 ? 'lastTry' : 'tryAgain');
                 el.className = "text-amber-300 text-2xl";
             } else {
-                el.textContent = t('answer');
-                el.className = "text-slate-500";
+                el.textContent = t(currentQuestion.op === 'clk' ? 'clockQuestion' : 'answer');
+                el.className = currentQuestion.op === 'clk' ? "text-slate-500 text-lg leading-tight text-center" : "text-slate-500";
             }
         }
 
@@ -1254,10 +1425,11 @@
         function submitAnswer() {
             if (!sessionState.active || sessionState.paused || sessionState.revealing) return;
 
-            const userVal = parseInt(answerBuffer, 10);
+            const userVal = currentQuestion.op === 'clk' ? parseTypedTime(answerBuffer) : parseInt(answerBuffer, 10);
             if (isNaN(userVal)) return;
 
             const isCorrect = userVal === currentQuestion.answer;
+            if (currentQuestion.choices) markClockChoice(userVal, isCorrect);
             const firstTry = currentQuestion.tries === 0;
 
             // Only the first try counts towards stats, speed and score; retries are for learning
@@ -1297,6 +1469,12 @@
             slot.className = 'text-amber-300';
             const el = document.getElementById('answerText');
             el.textContent = '';
+            if (currentQuestion.op === 'clk') {
+                // No "= ?" line under a clock: show the time in the answer box instead
+                el.textContent = formatClock(currentQuestion.num1, currentQuestion.num2);
+                el.className = 'text-amber-300';
+                if (currentQuestion.choices) markClockChoice(currentQuestion.answer, true);
+            }
             revealTimer = setTimeout(nextAfterReveal, REVEAL_MS);
         }
 
@@ -1557,7 +1735,8 @@
             if (!op) op = getActiveOps()[0];
             gridOp = op;
             const def = OPERATIONS[op];
-            const [lo, hi] = def.range;
+            const rows = opRows(op);
+            const cols = opCols(op);
 
             const tabs = document.getElementById('gridTabs');
             tabs.replaceChildren();
@@ -1565,7 +1744,7 @@
                 const tab = document.createElement('button');
                 const on = tabOp === op;
                 tab.className = `py-1.5 rounded-lg text-lg font-bold font-mono-num ${on ? 'bg-indigo-500/30 text-white border border-indigo-500/60' : 'text-slate-400 border border-transparent'}`;
-                tab.textContent = OPERATIONS[tabOp].symbol;
+                setOpLabel(tab, tabOp);
                 tab.setAttribute('aria-label', t(OPERATIONS[tabOp].nameKey));
                 tab.setAttribute('aria-pressed', on);
                 tab.addEventListener('click', () => renderMasteryGrid(tabOp));
@@ -1574,10 +1753,12 @@
 
             const grid = document.getElementById('masteryGrid');
             grid.replaceChildren();
-            const columns = hi - lo + 2;
+            const columns = cols.length + 1;
             grid.style.gridTemplateColumns = `repeat(${columns}, minmax(0, 1fr))`;
             // Smaller grids get proportionally narrower, keeping every square the same size
-            grid.style.width = `${(columns / MAX_GRID_COLUMNS) * 100}%`;
+            // (the 3px gaps are taken out first so cells match exactly)
+            const GAP = 3;
+            grid.style.width = `calc((100% - ${(MAX_GRID_COLUMNS - 1) * GAP}px) * ${columns / MAX_GRID_COLUMNS} + ${(columns - 1) * GAP}px)`;
 
             const header = (text) => {
                 const el = document.createElement('div');
@@ -1586,35 +1767,51 @@
                 return el;
             };
 
-            grid.appendChild(header(def.symbol));
-            for (let c = lo; c <= hi; c++) grid.appendChild(header(c));
+            const corner = header('');
+            setOpLabel(corner, op);
+            grid.appendChild(corner);
+            cols.forEach(c => grid.appendChild(header(op === 'clk' ? String(c).padStart(2, '0') : c)));
 
-            for (let r = lo; r <= hi; r++) {
+            rows.forEach(r => {
                 grid.appendChild(header(r));
-                for (let c = lo; c <= hi; c++) {
+                cols.forEach(c => {
                     const fact = factFor(op, r, c);
                     const level = factLevel(fact.key);
                     const cell = document.createElement('button');
                     cell.className = `aspect-square rounded-[3px] ${LEVEL_STYLES[level].cell}`;
-                    cell.setAttribute('aria-label', `${fact.x} ${def.symbol} ${fact.y}: ${t(LEVEL_STYLES[level].labelKey)}`);
+                    const label = op === 'clk' ? fact.key : `${fact.x} ${def.symbol} ${fact.y}`;
+                    cell.setAttribute('aria-label', `${label}: ${t(LEVEL_STYLES[level].labelKey)}`);
                     cell.addEventListener('click', () => showFactDetail(fact));
                     grid.appendChild(cell);
-                }
-            }
+                });
+            });
 
-            const total = allFacts(op).length;
-            const mastered = countMastered(factStats, getActivePlayer(), [op]);
+            const facts = allFacts(op);
+            const total = facts.length;
+            const mastered = facts.filter(f => factLevel(f.key) === 'mastered').length;
             document.getElementById('masterySummary').innerText = t('masteredCount', { n: mastered, total });
             document.getElementById('masteryBar').style.width = `${(mastered / total) * 100}%`;
             document.getElementById('gridHint').innerText = def.gridHintKey ? t(def.gridHintKey) : '';
             document.getElementById('factDetail').innerText = t('tapSquare');
         }
 
+        // Operation symbol, or an icon for the clock
+        function setOpLabel(el, op) {
+            const def = OPERATIONS[op];
+            if (def.icon) {
+                const i = document.createElement('i');
+                i.className = def.icon;
+                el.replaceChildren(i);
+            } else {
+                el.textContent = def.symbol;
+            }
+        }
+
         function showFactDetail(fact) {
             const stat = factStats[fact.key];
             const level = factLevel(fact.key);
             const el = document.getElementById('factDetail');
-            const text = `${fact.x} ${OPERATIONS[fact.op].symbol} ${fact.y} = ${fact.answer}`;
+            const text = factText(fact);
             if (level === 'new') {
                 el.innerText = `${text} · ${t('notPracticed')}`;
                 return;
@@ -1898,7 +2095,7 @@
             });
             const facts = {};
             entries(raw.facts).forEach(([key, f]) => {
-                if (/^\d{1,3}[+\-x\/]\d{1,3}$/.test(key) && Array.isArray(f) && f.length === 4 && f.every(n => count(n) !== null)) {
+                if (/^(\d{1,3}[+\-x\/]\d{1,3}|\d{1,2}:\d{2})$/.test(key) && Array.isArray(f) && f.length === 4 && f.every(n => count(n) !== null)) {
                     facts[key] = { attempts: f[0], correct: f[1], speed: f[0] > 0 ? f[2] : null, streak: f[3] };
                 }
             });
